@@ -1,9 +1,372 @@
-
 import java_cup.runtime.*;
 
-/**
-Place Terminals Here
-*/
+action code {:
+    private String joinLines(String a, String b) {
+        if (a == null || a.isEmpty()) return b == null ? "" : b;
+        if (b == null || b.isEmpty()) return a;
+        return a + "\n" + b;
+    }
 
-non terminal dummy;
-dummy ::= ;
+    private String indent(String s) {
+        if (s == null || s.isEmpty()) return "";
+        String[] lines = s.split("\\n", -1);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            if (!lines[i].isEmpty()) out.append("\t");
+            out.append(lines[i]);
+            if (i + 1 < lines.length) out.append("\n");
+        }
+        return out.toString();
+    }
+
+    private String wrapBlock(String body) {
+        if (body == null || body.isEmpty()) return "{}";
+        return "{\n" + indent(body) + "\n}";
+    }
+
+    private String paren(String s) {
+        return "(" + s + ")";
+    }
+
+    private String classText(String id, String members) {
+        if (members == null || members.isEmpty()) {
+            return "class " + id + " {}";
+        }
+        return "class " + id + " {\n" + indent(members) + "\n}";
+    }
+:};
+
+terminal String ID;
+terminal String INT_LIT;
+terminal String FLOAT_LIT;
+terminal String CHAR_LIT;
+terminal String STRING_LIT;
+
+terminal CLASS, VOID, INT, CHAR, BOOL, FLOAT, FINAL;
+terminal IF, ELSE, WHILE, RETURN;
+terminal READ, PRINT, PRINTLINE;
+terminal TRUE, FALSE;
+
+terminal LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET;
+terminal SEMICOLON, COMMA, COLON, QUESTION;
+terminal PLUS, MINUS, MULT, DIV, ASSIGN, LT, GT, TILDE;
+terminal PLUSPLUS, MINUSMINUS, LE, GE, EQ, NE, AND, OR;
+
+terminal UMINUS, UPLUS, UCOMP, UCAST;
+
+non terminal Program program;
+non terminal String class_decl;
+non terminal String member_list;
+non terminal String member;
+non terminal String member_after_type_id;
+non terminal String field_tail;
+non terminal String final_field_tail;
+non terminal String formal_list_opt;
+non terminal String formal_list;
+non terminal String formal;
+non terminal String formal_array_opt;
+non terminal String stmt_list;
+non terminal String stmt;
+non terminal String block;
+non terminal String local_decl_list;
+non terminal String local_decl;
+non terminal String local_decl_tail;
+non terminal String array_size_opt;
+non terminal String name;
+non terminal String expr;
+non terminal String cond_expr;
+non terminal String or_expr;
+non terminal String and_expr;
+non terminal String cmp_expr;
+non terminal String add_expr;
+non terminal String mult_expr;
+non terminal String unary_expr;
+non terminal String primary_expr;
+non terminal String arg_list;
+non terminal String opt_arg_list;
+non terminal String read_list;
+non terminal String print_list;
+non terminal String primitive_type;
+
+precedence nonassoc ELSE;
+precedence right QUESTION, COLON;
+precedence left OR;
+precedence left AND;
+precedence left EQ, NE, LT, LE, GT, GE;
+precedence left PLUS, MINUS;
+precedence left MULT, DIV;
+precedence right UMINUS, UPLUS, UCOMP, UCAST;
+
+start with program;
+
+program ::= class_decl:c
+        {: RESULT = new Program(c); :}
+    | stmt_list:s
+        {: RESULT = new Program(s); :}
+    ;
+
+class_decl ::= CLASS ID:id LBRACE member_list:m RBRACE
+        {: RESULT = classText(id, m); :}
+    ;
+
+member_list ::= member_list:a member:b
+        {: RESULT = joinLines(a, b); :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+member ::= VOID ID:id LPAREN formal_list_opt:args RPAREN block:b
+        {: RESULT = "void " + id + "(" + args + ")" + b; :}
+    | primitive_type:t ID:id member_after_type_id:tail
+        {: RESULT = t + " " + id + tail; :}
+    | FINAL primitive_type:t ID:id final_field_tail:tail
+        {: RESULT = "final " + t + " " + id + tail; :}
+    | SEMICOLON
+        {: RESULT = ";"; :}
+    ;
+
+member_after_type_id ::= LPAREN formal_list_opt:args RPAREN block:b
+        {: RESULT = "(" + args + ")" + b; :}
+    | field_tail:t
+        {: RESULT = t; :}
+    ;
+
+field_tail ::= ASSIGN expr:e SEMICOLON
+        {: RESULT = " = " + e + ";"; :}
+    | array_size_opt:arr SEMICOLON
+        {: RESULT = arr + ";"; :}
+    ;
+
+final_field_tail ::= ASSIGN expr:e SEMICOLON
+        {: RESULT = " = " + e + ";"; :}
+    | array_size_opt:arr SEMICOLON
+        {: RESULT = arr + ";"; :}
+    ;
+
+array_size_opt ::= LBRACKET INT_LIT:n RBRACKET
+        {: RESULT = "[" + n + "]"; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+formal_list_opt ::= formal_list:f
+        {: RESULT = f; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+formal_list ::= formal_list:a COMMA formal:b
+        {: RESULT = a + ", " + b; :}
+    | formal:f
+        {: RESULT = f; :}
+    ;
+
+formal ::= primitive_type:t ID:id formal_array_opt:arr
+        {: RESULT = t + " " + id + arr; :}
+    ;
+
+formal_array_opt ::= LBRACKET RBRACKET
+        {: RESULT = "[]"; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+stmt_list ::= stmt_list:a stmt:b
+        {: RESULT = joinLines(a, b); :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+stmt ::= IF LPAREN expr:e RPAREN stmt:s
+        {: RESULT = "if ( " + e + " ) " + s; :}
+    | IF LPAREN expr:e RPAREN stmt:s1 ELSE stmt:s2
+        {: RESULT = "if ( " + e + " ) " + s1 + " else " + s2; :}
+    | WHILE LPAREN expr:e RPAREN stmt:s
+        {: RESULT = "while ( " + e + " ) " + s; :}
+    | block:b
+        {: RESULT = b; :}
+    | name:n ASSIGN expr:e SEMICOLON
+        {: RESULT = n + " = " + e + ";"; :}
+    | READ LPAREN read_list:r RPAREN SEMICOLON
+        {: RESULT = "read(" + r + ");"; :}
+    | PRINT LPAREN print_list:p RPAREN SEMICOLON
+        {: RESULT = "print(" + p + ");"; :}
+    | PRINTLINE LPAREN opt_arg_list:p RPAREN SEMICOLON
+        {: RESULT = "printline(" + p + ");"; :}
+    | ID:id LPAREN RPAREN SEMICOLON
+        {: RESULT = id + "();"; :}
+    | ID:id LPAREN arg_list:args RPAREN SEMICOLON
+        {: RESULT = id + "(" + args + ");"; :}
+    | RETURN SEMICOLON
+        {: RESULT = "return;"; :}
+    | RETURN expr:e SEMICOLON
+        {: RESULT = "return " + e + ";"; :}
+    | name:n PLUSPLUS SEMICOLON
+        {: RESULT = n + "++;"; :}
+    | name:n MINUSMINUS SEMICOLON
+        {: RESULT = n + "--;"; :}
+    | SEMICOLON
+        {: RESULT = ";"; :}
+    ;
+
+block ::= LBRACE local_decl_list:decls stmt_list:stmts RBRACE
+        {: 
+            String body;
+            if (!decls.isEmpty() && !stmts.isEmpty()) {
+                body = decls + "\n\n" + stmts;
+            } else {
+                body = joinLines(decls, stmts);
+            }
+            RESULT = wrapBlock(body);
+        :}
+    ;
+
+local_decl_list ::= local_decl_list:a local_decl:b
+        {: RESULT = joinLines(a, b); :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+local_decl ::= primitive_type:t ID:id local_decl_tail:tail SEMICOLON
+        {: RESULT = t + " " + id + tail + ";"; :}
+    ;
+
+local_decl_tail ::= ASSIGN expr:e
+        {: RESULT = " = " + e; :}
+    | LBRACKET INT_LIT:n RBRACKET
+        {: RESULT = "[" + n + "]"; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+name ::= ID:id
+        {: RESULT = id; :}
+    | ID:id LBRACKET expr:e RBRACKET
+        {: RESULT = id + "[" + e + "]"; :}
+    ;
+
+expr ::= cond_expr:e
+        {: RESULT = e; :}
+    ;
+
+cond_expr ::= or_expr:c QUESTION expr:t COLON cond_expr:f
+        {: RESULT = paren(c + " ? " + t + " : " + f); :}
+    | or_expr:e
+        {: RESULT = e; :}
+    ;
+
+or_expr ::= or_expr:l OR and_expr:r
+        {: RESULT = paren(l + " || " + r); :}
+    | and_expr:e
+        {: RESULT = e; :}
+    ;
+
+and_expr ::= and_expr:l AND cmp_expr:r
+        {: RESULT = paren(l + " && " + r); :}
+    | cmp_expr:e
+        {: RESULT = e; :}
+    ;
+
+cmp_expr ::= cmp_expr:l LT add_expr:r
+        {: RESULT = paren(l + " < " + r); :}
+    | cmp_expr:l LE add_expr:r
+        {: RESULT = paren(l + " <= " + r); :}
+    | cmp_expr:l GT add_expr:r
+        {: RESULT = paren(l + " > " + r); :}
+    | cmp_expr:l GE add_expr:r
+        {: RESULT = paren(l + " >= " + r); :}
+    | cmp_expr:l EQ add_expr:r
+        {: RESULT = paren(l + " == " + r); :}
+    | cmp_expr:l NE add_expr:r
+        {: RESULT = paren(l + " <> " + r); :}
+    | add_expr:e
+        {: RESULT = e; :}
+    ;
+
+add_expr ::= add_expr:l PLUS mult_expr:r
+        {: RESULT = paren(l + " + " + r); :}
+    | add_expr:l MINUS mult_expr:r
+        {: RESULT = paren(l + " - " + r); :}
+    | mult_expr:e
+        {: RESULT = e; :}
+    ;
+
+mult_expr ::= mult_expr:l MULT unary_expr:r
+        {: RESULT = paren(l + " * " + r); :}
+    | mult_expr:l DIV unary_expr:r
+        {: RESULT = paren(l + " / " + r); :}
+    | unary_expr:e
+        {: RESULT = e; :}
+    ;
+
+unary_expr ::= TILDE unary_expr:e
+        {: RESULT = paren("~" + e); :}
+        %prec UCOMP
+    | MINUS unary_expr:e
+        {: RESULT = paren("-" + e); :}
+        %prec UMINUS
+    | PLUS unary_expr:e
+        {: RESULT = paren("+" + e); :}
+        %prec UPLUS
+    | LPAREN primitive_type:t RPAREN unary_expr:e
+        {: RESULT = paren("(" + t + ")" + e); :}
+        %prec UCAST
+    | primary_expr:e
+        {: RESULT = e; :}
+    ;
+
+primary_expr ::= name:n
+        {: RESULT = n; :}
+    | ID:id LPAREN RPAREN
+        {: RESULT = id + "()"; :}
+    | ID:id LPAREN arg_list:args RPAREN
+        {: RESULT = id + "(" + args + ")"; :}
+    | INT_LIT:n
+        {: RESULT = n; :}
+    | FLOAT_LIT:n
+        {: RESULT = n; :}
+    | CHAR_LIT:n
+        {: RESULT = n; :}
+    | STRING_LIT:n
+        {: RESULT = n; :}
+    | TRUE
+        {: RESULT = "true"; :}
+    | FALSE
+        {: RESULT = "false"; :}
+    | LPAREN expr:e RPAREN
+        {: RESULT = "(" + e + ")"; :}
+    ;
+
+opt_arg_list ::= arg_list:a
+        {: RESULT = a; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+arg_list ::= arg_list:a COMMA expr:e
+        {: RESULT = a + ", " + e; :}
+    | expr:e
+        {: RESULT = e; :}
+    ;
+
+read_list ::= read_list:a COMMA name:n
+        {: RESULT = a + ", " + n; :}
+    | name:n
+        {: RESULT = n; :}
+    ;
+
+print_list ::= print_list:a COMMA expr:e
+        {: RESULT = a + ", " + e; :}
+    | expr:e
+        {: RESULT = e; :}
+    ;
+
+primitive_type ::= INT
+        {: RESULT = "int"; :}
+    | FLOAT
+        {: RESULT = "float"; :}
+    | CHAR
+        {: RESULT = "char"; :}
+    | BOOL
+        {: RESULT = "bool"; :}
+    ;

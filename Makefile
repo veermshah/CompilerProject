@@ -13,7 +13,7 @@ default: run
 		$(JAVAC) -cp $(CP) $*.java
 
 FILE=    Lexer.java      parser.java    sym.java \
-    LexerTest.java
+	LexerTest.java    ScannerTest.java    Token.java    Program.java
 
 run: basicTest.txt
 

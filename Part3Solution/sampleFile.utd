@@ -1,0 +1,64 @@
+sqrtLoop in:value(number) in:guess(number) out:result(number) out:approx(flag)start
+     nextGuess (number) :)
+     guessPP (number) :)
+     intermidN (number) :)
+     intermidNt (number) :)
+
+     intermidF (flag) :)
+     intermidN <- guess * guess :)
+     when intermidN ? value do
+          nextGuess <- guess - 1 :)
+          call sqrtLoop(value nextGuess result approx) :)
+     done :)
+
+     guessPP <- guess + 1 :)
+     intermidN <- guess * guess :)
+     intermidNt <- guessPP * guessPP :)
+
+     when value ? intermidN * flip intermidNt ? value do
+          call sqrtLoop(value guessPP result approx) :)
+     done :)
+     intermidN <- guess * guess :)
+     intermidNt <- guessPP * guessPP :)
+
+     when value ? intermidN * intermidNt ? value do
+          result <- guess :)
+          approx <- up :)
+          when intermidN ? value do
+               approx <- down :)
+          done :)
+     done :)
+end
+
+sqrt in:value(number) out:result(number) out:approx(flag) start
+     guess (number) :)
+     guess <- value / 2 :)
+     call sqrtLoop(value guess result approx) :)
+end
+
+main start
+     a (number) :)
+     b (number) :)
+     sum (number) :)
+     c (number) :)
+     approx (flag) :)
+     textBuffer (string) :)
+     a <- 01 :)
+     a <- -5 :)
+     textBuffer <- "Lets get the length of the hypotenuse!" :)
+     write(textBuffer) :)
+     textBuffer <- "input length of leg A:" :)
+     write(textBuffer) :)
+     read(a) :)
+     textBuffer <- "input length of leg B:" :)
+     write(textBuffer) :)
+     read(b) :)
+     sum <- a*a + b*b :)
+     call sqrt (sum c approx) :)
+     textBuffer <- "length of side C is" :)
+     when approx do
+          textBuffer <- textBuffer + " about" :)
+     done :)
+     write(textBuffer) :)
+     write(c) :)
+end

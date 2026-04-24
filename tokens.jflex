@@ -85,7 +85,11 @@ line_comment = \\\\[^\n]*
 
 // Block comment: starts with \* (backslash-asterisk), ends at first *\ (asterisk-backslash)
 block_comment = \\\* ([^*] | \* [^\\])* \*\\
+// Line comment: starts with \\ (two backslashes), ends at newline
+line_comment = \\\\[^\n]*
 
+// Block comment: starts with \* (backslash-asterisk), ends at first *\ (asterisk-backslash)
+block_comment = \\\*([^*]|\*[^\\])*\*\\
 
 
 %%

@@ -1,0 +1,6 @@
+class MethodSemi {
+	int foo()
+	{
+		return 1;
+	};
+}

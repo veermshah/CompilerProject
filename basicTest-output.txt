@@ -1,4 +1,0 @@
-Illegal char, 'a' line: 0, column: 0
-Illegal char, 'b' line: 0, column: 0
-Illegal char, 'c' line: 0, column: 0
-Illegal char, 'd' line: 1, column: 0

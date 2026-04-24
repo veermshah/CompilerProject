@@ -1,19 +1,22 @@
 JAVA=java
 JAVAC=javac
 JFLEX=$(JAVA) -jar jflex-full-1.8.2.jar
-CUPJAR=./java-cup-11b.jar
+CUPJAR=java-cup-11b.jar
 CUP=$(JAVA) -jar $(CUPJAR)
-CP=.:$(CUPJAR)
+CP=.;$(CUPJAR)
 
 default: run
 
 .SUFFIXES: $(SUFFIXES) .class .java
 
 .java.class:
-		$(JAVAC) -cp $(CP) $*.java
+		$(JAVAC) -cp $(CP) *.java
 
 FILE=    Lexer.java      parser.java    sym.java \
-    LexerTest.java
+	LexerTest.java    ScannerTest.java    Token.java    Program.java \
+	AstNodes.java \
+	SemanticException.java    TypeInfo.java    SemanticContext.java    SymbolTable.java \
+	SemanticNode.java    TypeCheckingTest.java
 
 run: basicTest.txt
 

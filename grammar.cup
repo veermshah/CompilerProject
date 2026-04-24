@@ -1,9 +1,341 @@
-
 import java_cup.runtime.*;
+import java.util.*;
 
-/**
-Place Terminals Here
-*/
+action code {:
+:};
 
-non terminal dummy;
-dummy ::= ;
+terminal String ID;
+terminal String INT_LIT;
+terminal String FLOAT_LIT;
+terminal String CHAR_LIT;
+terminal String STRING_LIT;
+
+terminal CLASS, VOID, INT, CHAR, BOOL, FLOAT, FINAL;
+terminal IF, ELSE, WHILE, RETURN;
+terminal READ, PRINT, PRINTLINE;
+terminal TRUE, FALSE;
+
+terminal LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET;
+terminal SEMICOLON, COMMA, COLON, QUESTION;
+terminal PLUS, MINUS, MULT, DIV, ASSIGN, LT, GT, TILDE;
+terminal PLUSPLUS, MINUSMINUS, LE, GE, EQ, NE, AND, OR;
+
+terminal UMINUS, UPLUS, UCOMP, UCAST;
+
+non terminal Program program;
+non terminal ClassDeclNode class_decl;
+non terminal java.util.ArrayList memberdecls;
+non terminal java.util.ArrayList member_list;
+non terminal MemberDeclNode member;
+non terminal java.lang.String optionalsemi;
+non terminal java.util.ArrayList formal_list_opt;
+non terminal java.util.ArrayList formal_list;
+non terminal ParamDeclNode formal;
+non terminal java.lang.Boolean formal_array_opt;
+non terminal java.util.ArrayList stmt_list;
+non terminal StmtNode stmt;
+non terminal BlockStmtNode block;
+non terminal java.util.ArrayList local_decl_list;
+non terminal VarDeclStmtNode local_decl;
+non terminal ExprNode name;
+non terminal ExprNode expr;
+non terminal ExprNode cond_expr;
+non terminal ExprNode or_expr;
+non terminal ExprNode and_expr;
+non terminal ExprNode cmp_expr;
+non terminal ExprNode add_expr;
+non terminal ExprNode mult_expr;
+non terminal ExprNode unary_expr;
+non terminal ExprNode primary_expr;
+non terminal java.util.ArrayList arg_list;
+non terminal java.util.ArrayList opt_arg_list;
+non terminal java.util.ArrayList read_list;
+non terminal java.util.ArrayList print_list;
+non terminal TypeInfo primitive_type;
+
+precedence nonassoc ELSE;
+precedence right QUESTION, COLON;
+precedence left OR;
+precedence left AND;
+precedence left EQ, NE, LT, LE, GT, GE;
+precedence left PLUS, MINUS;
+precedence left MULT, DIV;
+precedence right UMINUS, UPLUS, UCOMP, UCAST;
+
+start with program;
+
+program ::= class_decl:c
+        {: RESULT = new Program(c); :}
+    ;
+
+class_decl ::= CLASS ID:id LBRACE memberdecls:m RBRACE
+        {: RESULT = new ClassDeclNode(id, m); :}
+    ;
+
+memberdecls ::= member_list:m
+        {: RESULT = m; :}
+    | /* empty */
+        {: RESULT = new java.util.ArrayList(); :}
+    ;
+
+member_list ::= member_list:a member:b
+        {: a.add(b); RESULT = a; :}
+    | member:b
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            list.add(b);
+            RESULT = list;
+        :}
+    ;
+
+member ::= VOID ID:id LPAREN formal_list_opt:args RPAREN block:b optionalsemi:os
+        {: RESULT = new MethodDeclNode(TypeInfo.VOID, id, args, b, true); :}
+    | primitive_type:t ID:id LPAREN formal_list_opt:args RPAREN block:b optionalsemi:os
+        {: RESULT = new MethodDeclNode(t, id, args, b, false); :}
+    | FINAL primitive_type:t ID:id ASSIGN expr:e SEMICOLON
+        {: RESULT = new FieldDeclNode(id, t, true, e, false); :}
+    | FINAL primitive_type:t ID:id SEMICOLON
+        {: RESULT = new FieldDeclNode(id, t, true, null, false); :}
+    | primitive_type:t ID:id ASSIGN expr:e SEMICOLON
+        {: RESULT = new FieldDeclNode(id, t, false, e, false); :}
+    | primitive_type:t ID:id SEMICOLON
+        {: RESULT = new FieldDeclNode(id, t, false, null, false); :}
+    | primitive_type:t ID:id LBRACKET INT_LIT:n RBRACKET SEMICOLON
+        {: RESULT = new FieldDeclNode(id, t, false, null, true); :}
+    ;
+
+optionalsemi ::= SEMICOLON
+        {: RESULT = ";"; :}
+    | /* empty */
+        {: RESULT = ""; :}
+    ;
+
+formal_list_opt ::= formal_list:f
+        {: RESULT = f; :}
+    | /* empty */
+        {: RESULT = new java.util.ArrayList(); :}
+    ;
+
+formal_list ::= formal_list:a COMMA formal:b
+        {: a.add(b); RESULT = a; :}
+    | formal:f
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            list.add(f);
+            RESULT = list;
+        :}
+    ;
+
+formal ::= primitive_type:t ID:id formal_array_opt:arr
+        {: RESULT = new ParamDeclNode(id, t, arr.booleanValue()); :}
+    ;
+
+formal_array_opt ::= LBRACKET RBRACKET
+        {: RESULT = Boolean.TRUE; :}
+    | /* empty */
+        {: RESULT = Boolean.FALSE; :}
+    ;
+
+stmt_list ::= stmt_list:a stmt:b
+        {: a.add(b); RESULT = a; :}
+    | /* empty */
+        {: RESULT = new java.util.ArrayList(); :}
+    ;
+
+stmt ::= IF LPAREN expr:e RPAREN stmt:s
+        {: RESULT = new IfStmtNode(e, s, null); :}
+    | IF LPAREN expr:e RPAREN stmt:s1 ELSE stmt:s2
+        {: RESULT = new IfStmtNode(e, s1, s2); :}
+    | WHILE LPAREN expr:e RPAREN stmt:s
+        {: RESULT = new WhileStmtNode(e, s); :}
+    | block:b optionalsemi:os
+        {: RESULT = b; :}
+    | name:n ASSIGN expr:e SEMICOLON
+        {: RESULT = new AssignStmtNode(n, e); :}
+    | READ LPAREN read_list:r RPAREN SEMICOLON
+        {: RESULT = new ReadStmtNode(r); :}
+    | PRINT LPAREN print_list:p RPAREN SEMICOLON
+        {: RESULT = new PrintStmtNode(p, false); :}
+    | PRINTLINE LPAREN opt_arg_list:p RPAREN SEMICOLON
+        {: RESULT = new PrintStmtNode(p, true); :}
+    | ID:id LPAREN RPAREN SEMICOLON
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            RESULT = new CallStmtNode(id, list);
+        :}
+    | ID:id LPAREN arg_list:args RPAREN SEMICOLON
+        {: RESULT = new CallStmtNode(id, args); :}
+    | RETURN SEMICOLON
+        {: RESULT = new ReturnStmtNode(null); :}
+    | RETURN expr:e SEMICOLON
+        {: RESULT = new ReturnStmtNode(e); :}
+    | name:n PLUSPLUS SEMICOLON
+        {: RESULT = new IncDecStmtNode(n, true); :}
+    | name:n MINUSMINUS SEMICOLON
+        {: RESULT = new IncDecStmtNode(n, false); :}
+    ;
+
+block ::= LBRACE local_decl_list:decls stmt_list:stmts RBRACE
+        {: RESULT = new BlockStmtNode(decls, stmts); :}
+    ;
+
+local_decl_list ::= local_decl_list:a local_decl:b
+        {: a.add(b); RESULT = a; :}
+    | /* empty */
+        {: RESULT = new java.util.ArrayList(); :}
+    ;
+
+local_decl ::= primitive_type:t ID:id ASSIGN expr:e SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, false, e, false); :}
+    | primitive_type:t ID:id SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, false, null, false); :}
+    | primitive_type:t ID:id LBRACKET INT_LIT:n RBRACKET SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, true, null, false); :}
+    ;
+
+name ::= ID:id
+        {: RESULT = new NameExprNode(id); :}
+    | ID:id LBRACKET expr:e RBRACKET
+        {: RESULT = new IndexExprNode(new NameExprNode(id), e); :}
+    ;
+
+expr ::= cond_expr:e
+        {: RESULT = e; :}
+    ;
+
+cond_expr ::= or_expr:c QUESTION expr:t COLON cond_expr:f
+        {: RESULT = new TernaryExprNode(c, t, f); :}
+    | or_expr:e
+        {: RESULT = e; :}
+    ;
+
+or_expr ::= or_expr:l OR and_expr:r
+        {: RESULT = new BinaryExprNode(l, "||", r); :}
+    | and_expr:e
+        {: RESULT = e; :}
+    ;
+
+and_expr ::= and_expr:l AND cmp_expr:r
+        {: RESULT = new BinaryExprNode(l, "&&", r); :}
+    | cmp_expr:e
+        {: RESULT = e; :}
+    ;
+
+cmp_expr ::= cmp_expr:l LT add_expr:r
+        {: RESULT = new BinaryExprNode(l, "<", r); :}
+    | cmp_expr:l LE add_expr:r
+        {: RESULT = new BinaryExprNode(l, "<=", r); :}
+    | cmp_expr:l GT add_expr:r
+        {: RESULT = new BinaryExprNode(l, ">", r); :}
+    | cmp_expr:l GE add_expr:r
+        {: RESULT = new BinaryExprNode(l, ">=", r); :}
+    | cmp_expr:l EQ add_expr:r
+        {: RESULT = new BinaryExprNode(l, "==", r); :}
+    | cmp_expr:l NE add_expr:r
+        {: RESULT = new BinaryExprNode(l, "<>", r); :}
+    | add_expr:e
+        {: RESULT = e; :}
+    ;
+
+add_expr ::= add_expr:l PLUS mult_expr:r
+        {: RESULT = new BinaryExprNode(l, "+", r); :}
+    | add_expr:l MINUS mult_expr:r
+        {: RESULT = new BinaryExprNode(l, "-", r); :}
+    | mult_expr:e
+        {: RESULT = e; :}
+    ;
+
+mult_expr ::= mult_expr:l MULT unary_expr:r
+        {: RESULT = new BinaryExprNode(l, "*", r); :}
+    | mult_expr:l DIV unary_expr:r
+        {: RESULT = new BinaryExprNode(l, "/", r); :}
+    | unary_expr:e
+        {: RESULT = e; :}
+    ;
+
+unary_expr ::= TILDE unary_expr:e
+        {: RESULT = new UnaryExprNode("~", e); :}
+        %prec UCOMP
+    | MINUS unary_expr:e
+        {: RESULT = new UnaryExprNode("-", e); :}
+        %prec UMINUS
+    | PLUS unary_expr:e
+        {: RESULT = new UnaryExprNode("+", e); :}
+        %prec UPLUS
+    | LPAREN primitive_type:t RPAREN unary_expr:e
+        {: RESULT = new UnaryExprNode("", e, t); :}
+        %prec UCAST
+    | primary_expr:e
+        {: RESULT = e; :}
+    ;
+
+primary_expr ::= name:n
+        {: RESULT = n; :}
+    | ID:id LPAREN RPAREN
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            RESULT = new CallExprNode(id, list);
+        :}
+    | ID:id LPAREN arg_list:args RPAREN
+        {: RESULT = new CallExprNode(id, args); :}
+    | INT_LIT:n
+        {: RESULT = new LiteralExprNode(n, TypeInfo.INT); :}
+    | FLOAT_LIT:n
+        {: RESULT = new LiteralExprNode(n, TypeInfo.FLOAT); :}
+    | CHAR_LIT:n
+        {: RESULT = new LiteralExprNode(n, TypeInfo.CHAR); :}
+    | STRING_LIT:n
+        {: RESULT = new LiteralExprNode(n, TypeInfo.STRING); :}
+    | TRUE
+        {: RESULT = new LiteralExprNode("true", TypeInfo.BOOL); :}
+    | FALSE
+        {: RESULT = new LiteralExprNode("false", TypeInfo.BOOL); :}
+    | LPAREN expr:e RPAREN
+        {: RESULT = e; :}
+    ;
+
+opt_arg_list ::= arg_list:a
+        {: RESULT = a; :}
+    | /* empty */
+        {: RESULT = new java.util.ArrayList(); :}
+    ;
+
+arg_list ::= arg_list:a COMMA expr:e
+        {: a.add(e); RESULT = a; :}
+    | expr:e
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            list.add(e);
+            RESULT = list;
+        :}
+    ;
+
+read_list ::= read_list:a COMMA name:n
+        {: a.add(n); RESULT = a; :}
+    | name:n
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            list.add(n);
+            RESULT = list;
+        :}
+    ;
+
+print_list ::= print_list:a COMMA expr:e
+        {: a.add(e); RESULT = a; :}
+    | expr:e
+        {:
+            java.util.ArrayList list = new java.util.ArrayList();
+            list.add(e);
+            RESULT = list;
+        :}
+    ;
+
+primitive_type ::= INT
+        {: RESULT = TypeInfo.INT; :}
+    | FLOAT
+        {: RESULT = TypeInfo.FLOAT; :}
+    | CHAR
+        {: RESULT = TypeInfo.CHAR; :}
+    | BOOL
+        {: RESULT = TypeInfo.BOOL; :}
+    ;

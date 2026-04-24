@@ -1,0 +1,7 @@
+class BadOrder {
+	int m()
+	{
+		return 1;
+	}
+	int late;
+}

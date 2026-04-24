@@ -1,0 +1,35 @@
+class AdvancedComplex {
+	int vals[4];
+	float compute(int a, float b, char c[])
+	{
+		int x = 1;
+		float y = 2.0;
+		bool ok;
+
+		x = (int) + - ~x;
+		y = (a + b * 3.0) / (float) (x + 1);
+		ok = (x < 10 && y >= 1.5) || false;
+		if (ok)
+		{
+			printline("ok", x, y);
+		}
+		else
+			while (x < 5) x++;
+		vals[(x ? 1 : 2)] = compute(a, y, c);
+		return (ok ? y : (float) x);
+	}
+	void main()
+	{
+		{
+			int i;
+			i = 0;
+			while (i < 4)
+			{
+				vals[i] = i * i;
+				i++;
+			};
+		}
+		;
+		print(vals[3]);
+	}
+}

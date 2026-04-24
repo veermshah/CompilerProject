@@ -1,0 +1,13 @@
+class test {
+	int x[7];
+	float pythag(float vals[]){
+		float a = vals[0];
+		float b = vals[1];
+		float c;
+
+		a = (a * a);
+		b = (b * b);
+		c = sqrt((a + b));
+		return (c + 0.0);
+	}
+}

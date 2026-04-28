@@ -54,16 +54,22 @@ public final class TypeInfo {
             if (kind != Kind.ARRAY) {
                 return true;
             }
-            return elementType.isAssignableFrom(source.elementType);
+            return elementType.isSameBase(source.elementType);
         }
         if (kind == Kind.FLOAT && source.kind == Kind.INT) {
+            return true;
+        }
+        if (kind == Kind.BOOL && source.kind == Kind.INT) {
+            return true;
+        }
+        if (kind == Kind.STRING && source.kind != Kind.ARRAY && source.kind != Kind.VOID) {
             return true;
         }
         return false;
     }
 
     public boolean isBoolCoercible() {
-        return kind == Kind.BOOL || kind == Kind.INT || kind == Kind.FLOAT;
+        return kind == Kind.BOOL || kind == Kind.INT;
     }
 
     public boolean isSameBase(TypeInfo other) {

@@ -2,6 +2,8 @@ public class SemanticContext {
     private final SymbolTable symbols;
     private TypeInfo currentReturnType = TypeInfo.VOID;
     private boolean inMethod = false;
+    private String currentClassName = "";
+    private String currentMethodName = "";
 
     public SemanticContext() {
         this.symbols = new SymbolTable();
@@ -15,7 +17,16 @@ public class SemanticContext {
         return currentReturnType;
     }
 
-    public void enterMethod(TypeInfo returnType) {
+    public void enterClass(String className) {
+        currentClassName = className;
+    }
+
+    public void exitClass() {
+        currentClassName = "";
+    }
+
+    public void enterMethod(String methodName, TypeInfo returnType) {
+        currentMethodName = methodName;
         currentReturnType = returnType;
         inMethod = true;
         symbols.enterScope();
@@ -23,6 +34,7 @@ public class SemanticContext {
 
     public void exitMethod() {
         symbols.exitScope();
+        currentMethodName = "";
         currentReturnType = TypeInfo.VOID;
         inMethod = false;
     }
@@ -37,5 +49,12 @@ public class SemanticContext {
 
     public void exitBlock() {
         symbols.exitScope();
+    }
+
+    public String errorPrefix() {
+        if (!currentClassName.isEmpty() && !currentMethodName.isEmpty()) {
+            return "class<" + currentClassName + ">:" + currentReturnType + " " + currentMethodName + ":";
+        }
+        return "";
     }
 }

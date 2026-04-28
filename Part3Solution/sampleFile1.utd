@@ -1,5 +1,0 @@
-a <- 5 :) b <- a + 10 :) c <- up:)d<-flip c:)
-write(a):)read(b):)
-call e(a b c):)
-call f():)
-when c ? d do a <- 20:) done:)

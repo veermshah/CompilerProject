@@ -10,7 +10,7 @@ terminal String FLOAT_LIT;
 terminal String CHAR_LIT;
 terminal String STRING_LIT;
 
-terminal CLASS, VOID, INT, CHAR, BOOL, FLOAT, FINAL;
+terminal CLASS, VOID, INT, CHAR, BOOL, FLOAT, STRING, FINAL;
 terminal IF, ELSE, WHILE, RETURN;
 terminal READ, PRINT, PRINTLINE;
 terminal TRUE, FALSE;
@@ -187,10 +187,16 @@ local_decl_list ::= local_decl_list:a local_decl:b
 
 local_decl ::= primitive_type:t ID:id ASSIGN expr:e SEMICOLON
         {: RESULT = new VarDeclStmtNode(id, t, false, e, false); :}
+    | FINAL primitive_type:t ID:id ASSIGN expr:e SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, false, e, true); :}
     | primitive_type:t ID:id SEMICOLON
         {: RESULT = new VarDeclStmtNode(id, t, false, null, false); :}
+    | FINAL primitive_type:t ID:id SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, false, null, true); :}
     | primitive_type:t ID:id LBRACKET INT_LIT:n RBRACKET SEMICOLON
         {: RESULT = new VarDeclStmtNode(id, t, true, null, false); :}
+    | FINAL primitive_type:t ID:id LBRACKET INT_LIT:n RBRACKET SEMICOLON
+        {: RESULT = new VarDeclStmtNode(id, t, true, null, true); :}
     ;
 
 name ::= ID:id
@@ -334,6 +340,8 @@ primitive_type ::= INT
         {: RESULT = TypeInfo.INT; :}
     | FLOAT
         {: RESULT = TypeInfo.FLOAT; :}
+    | STRING
+        {: RESULT = TypeInfo.STRING; :}
     | CHAR
         {: RESULT = TypeInfo.CHAR; :}
     | BOOL

@@ -43,21 +43,15 @@ final class TypeHelpers {
         }
     }
 
-    static void ensureStrictBool(TypeInfo type, String message) throws SemanticException {
-        if (type.getKind() != TypeInfo.Kind.BOOL) {
-            throw new SemanticException(message + ": condition must be bool, found " + type);
-        }
-    }
-
     static void ensureNumeric(TypeInfo type, String message) throws SemanticException {
         if (!type.isNumeric()) {
             throw new SemanticException(message + ": numeric operand required, found " + type);
         }
     }
 
-    static void ensureBoolOrNumeric(TypeInfo type, String message) throws SemanticException {
-        if (!(type.getKind() == TypeInfo.Kind.BOOL || type.isNumeric())) {
-            throw new SemanticException(message + ": bool or numeric operand required, found " + type);
+    static void ensureBoolCompatible(TypeInfo type, String message) throws SemanticException {
+        if (!type.isBoolCoercible()) {
+            throw new SemanticException(message + ": bool or bool-coercible operand required, found " + type);
         }
     }
 
@@ -72,10 +66,10 @@ final class TypeHelpers {
     }
 
     static TypeInfo equalityResult(TypeInfo left, TypeInfo right) throws SemanticException {
-        if (left.isSameBase(right) || (left.isNumeric() && right.isNumeric())) {
+        if (left.isNumeric() && right.isNumeric()) {
             return TypeInfo.BOOL;
         }
-        throw new SemanticException("incompatible equality operands: " + left + " and " + right);
+        throw new SemanticException("numeric equality operands required, found " + left + " and " + right);
     }
 }
 
@@ -105,9 +99,14 @@ final class ClassDeclNode extends AstNode {
 
     @Override
     public TypeInfo typeCheck(SemanticContext context) throws SemanticException {
-        for (MemberDeclNode member : members) {
-            member.register(context);
-            member.typeCheck(context);
+        context.enterClass(name);
+        try {
+            for (MemberDeclNode member : members) {
+                member.register(context);
+                member.typeCheck(context);
+            }
+        } finally {
+            context.exitClass();
         }
         return TypeInfo.VOID;
     }
@@ -140,7 +139,7 @@ final class FieldDeclNode extends MemberDeclNode {
     @Override
     void register(SemanticContext context) throws SemanticException {
         TypeInfo declaredType = isArray ? TypeInfo.arrayOf(type) : type;
-        context.symbols().declare(name, SymbolTable.SymbolKind.FIELD, declaredType, isFinal, null);
+        context.symbols().declare(name, SymbolTable.SymbolKind.FIELD, declaredType, isFinal, null, null);
     }
 
     @Override
@@ -187,11 +186,14 @@ final class MethodDeclNode extends MemberDeclNode {
 
     @Override
     void register(SemanticContext context) throws SemanticException {
+        List<String> paramNames = new ArrayList<>();
         List<TypeInfo> paramTypes = new ArrayList<>();
         for (ParamDeclNode param : params) {
+            paramNames.add(param.name());
             paramTypes.add(param.type());
         }
-        context.symbols().declare(name, SymbolTable.SymbolKind.METHOD, isVoid ? TypeInfo.VOID : returnType, false, paramTypes);
+        context.symbols().declare(name, SymbolTable.SymbolKind.METHOD, isVoid ? TypeInfo.VOID : returnType, false,
+                paramNames, paramTypes);
     }
 
     @Override
@@ -212,15 +214,18 @@ final class MethodDeclNode extends MemberDeclNode {
 
     @Override
     public TypeInfo typeCheck(SemanticContext context) throws SemanticException {
-        context.enterMethod(isVoid ? TypeInfo.VOID : returnType);
-        for (ParamDeclNode param : params) {
-            param.register(context);
+        context.enterMethod(name, isVoid ? TypeInfo.VOID : returnType);
+        try {
+            for (ParamDeclNode param : params) {
+                param.register(context);
+            }
+            body.typeCheck(context);
+            if (!isVoid && !body.containsReturn()) {
+                throw new SemanticException("missing return in method " + name);
+            }
+        } finally {
+            context.exitMethod();
         }
-        body.typeCheck(context);
-        if (!isVoid && !body.containsReturn()) {
-            throw new SemanticException("missing return in method " + name);
-        }
-        context.exitMethod();
         return TypeInfo.VOID;
     }
 }
@@ -240,8 +245,12 @@ final class ParamDeclNode extends AstNode {
         return isArray ? TypeInfo.arrayOf(type) : type;
     }
 
+    String name() {
+        return name;
+    }
+
     void register(SemanticContext context) throws SemanticException {
-        context.symbols().declare(name, SymbolTable.SymbolKind.PARAMETER, type(), false, null);
+        context.symbols().declare(name, SymbolTable.SymbolKind.PARAMETER, type(), false, null, null);
     }
 
     @Override
@@ -343,7 +352,7 @@ final class VarDeclStmtNode extends StmtNode {
     @Override
     public TypeInfo typeCheck(SemanticContext context) throws SemanticException {
         TypeInfo declaredType = isArray ? TypeInfo.arrayOf(type) : type;
-        context.symbols().declare(name, SymbolTable.SymbolKind.LOCAL, declaredType, isFinal, null);
+        context.symbols().declare(name, SymbolTable.SymbolKind.LOCAL, declaredType, isFinal, null, null);
         if (initializer != null) {
             TypeInfo actual = initializer.typeCheck(context);
             TypeHelpers.ensureAssignable(declaredType, actual, "local initializer for " + name);
@@ -382,6 +391,11 @@ final class IfStmtNode extends StmtNode {
             elseBranch.typeCheck(context);
         }
         return TypeInfo.VOID;
+    }
+
+    @Override
+    boolean containsReturn() {
+        return elseBranch != null && thenBranch.containsReturn() && elseBranch.containsReturn();
     }
 }
 
@@ -591,7 +605,9 @@ final class IncDecStmtNode extends StmtNode {
             throw new SemanticException("cannot modify final value: " + target.toString(0));
         }
         if (!type.isNumeric()) {
-            throw new SemanticException("increment/decrement requires int or float, found " + type);
+            String suffix = increment ? "++;" : "--;";
+            throw new SemanticException(context.errorPrefix() + "Cannot increment/decrement variable of type: " + type
+                    + " line: " + target.toString(0) + suffix);
         }
         return TypeInfo.VOID;
     }
@@ -644,6 +660,9 @@ final class NameExprNode extends ExprNode {
         SymbolTable.Symbol symbol = context.symbols().lookup(name);
         if (symbol == null) {
             throw new SemanticException("undeclared identifier: " + name);
+        }
+        if (symbol.kind == SymbolTable.SymbolKind.METHOD) {
+            throw new SemanticException("method identifier cannot be used as variable: " + name);
         }
         return symbol.type;
     }
@@ -779,7 +798,7 @@ final class UnaryExprNode extends ExprNode {
             return type;
         }
         if ("~".equals(operator)) {
-            TypeHelpers.ensureBoolOrNumeric(type, "unary ~");
+            TypeHelpers.ensureBoolCompatible(type, "unary ~");
             return TypeInfo.BOOL;
         }
         throw new SemanticException("unsupported unary operator: " + operator);
@@ -819,7 +838,14 @@ final class BinaryExprNode extends ExprNode {
         if ("==".equals(operator) || "<>".equals(operator)) {
             return TypeHelpers.equalityResult(leftType, rightType);
         }
-        if ("+".equals(operator) || "-".equals(operator) || "*".equals(operator) || "/".equals(operator)) {
+        if ("+".equals(operator)) {
+            if ((leftType.getKind() == TypeInfo.Kind.STRING && rightType.isScalar())
+                    || (rightType.getKind() == TypeInfo.Kind.STRING && leftType.isScalar())) {
+                return TypeInfo.STRING;
+            }
+            return TypeHelpers.numericResult(leftType, rightType);
+        }
+        if ("-".equals(operator) || "*".equals(operator) || "/".equals(operator)) {
             return TypeHelpers.numericResult(leftType, rightType);
         }
         throw new SemanticException("unsupported binary operator: " + operator);
@@ -844,14 +870,11 @@ final class TernaryExprNode extends ExprNode {
 
     @Override
     public TypeInfo typeCheck(SemanticContext context) throws SemanticException {
-        TypeHelpers.ensureStrictBool(condition.typeCheck(context), "ternary condition");
+        TypeHelpers.ensureBoolCondition(condition.typeCheck(context), "ternary condition");
         TypeInfo trueType = whenTrue.typeCheck(context);
         TypeInfo falseType = whenFalse.typeCheck(context);
-        if (trueType.isAssignableFrom(falseType)) {
+        if (trueType.isSameBase(falseType)) {
             return trueType;
-        }
-        if (falseType.isAssignableFrom(trueType)) {
-            return falseType;
         }
         throw new SemanticException("ternary branches are incompatible: " + trueType + " and " + falseType);
     }

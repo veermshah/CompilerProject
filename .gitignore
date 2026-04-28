@@ -1,5 +1,2 @@
 *~
 *.class
-parser.java
-Lexer.java
-sym.java

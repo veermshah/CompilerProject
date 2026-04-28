@@ -1,0 +1,1 @@
+class<x>:void main:Cannot increment/decrement variable of type: bool line: x--;

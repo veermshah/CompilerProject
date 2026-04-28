@@ -17,9 +17,9 @@ public class TypeCheckingTest {
             parser parser = new parser(lexer);
             Program program = (Program) parser.parse().value;
             program.typeCheck();
-            System.err.println("All good!");
+            System.err.print("All good!");
         } catch (SemanticException semanticException) {
-            System.err.println(semanticException);
+            System.err.print(semanticException);
         } catch (Exception exception) {
             exception.printStackTrace();
         }

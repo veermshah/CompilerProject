@@ -19,13 +19,20 @@ public class SymbolTable {
         public final SymbolKind kind;
         public final TypeInfo type;
         public final boolean isFinal;
+        public final List<String> parameterNames;
         public final List<TypeInfo> parameterTypes;
 
-        public Symbol(String name, SymbolKind kind, TypeInfo type, boolean isFinal, List<TypeInfo> parameterTypes) {
+        public Symbol(String name, SymbolKind kind, TypeInfo type, boolean isFinal, List<String> parameterNames,
+                List<TypeInfo> parameterTypes) {
             this.name = name;
             this.kind = kind;
             this.type = type;
             this.isFinal = isFinal;
+            if (parameterNames == null) {
+                this.parameterNames = Collections.emptyList();
+            } else {
+                this.parameterNames = new ArrayList<>(parameterNames);
+            }
             if (parameterTypes == null) {
                 this.parameterTypes = Collections.emptyList();
             } else {
@@ -52,12 +59,13 @@ public class SymbolTable {
         scopes.pop();
     }
 
-    public Symbol declare(String name, SymbolKind kind, TypeInfo type, boolean isFinal, List<TypeInfo> parameterTypes) throws SemanticException {
+    public Symbol declare(String name, SymbolKind kind, TypeInfo type, boolean isFinal, List<String> parameterNames,
+            List<TypeInfo> parameterTypes) throws SemanticException {
         Map<String, Symbol> current = scopes.peek();
         if (current.containsKey(name)) {
             throw new SemanticException("same-scope redeclaration of '" + name + "'");
         }
-        Symbol symbol = new Symbol(name, kind, type, isFinal, parameterTypes);
+        Symbol symbol = new Symbol(name, kind, type, isFinal, parameterNames, parameterTypes);
         current.put(name, symbol);
         if (scopes.size() == 1) {
             globalDeclarations.add(symbol);
